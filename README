@@ -1,0 +1,93 @@
+
+```
+from keras.models import load_model
+from time import sleep
+from keras.preprocessing.image import img_to_array
+from keras.preprocessing import image
+import cv2
+import numpy as np
+```
+- These lines import necessary libraries and modules. 
+  - `load_model` is used to load a pre-trained Keras model.
+  - `sleep` function from the time module pauses the program execution for a specified number of seconds.
+  - `img_to_array` converts a PIL Image instance or a numpy array (single or batch) of shape `(height, width, channels)` to a numpy array of shape `(height, width, channels)`.
+  - `cv2` is the OpenCV library for computer vision tasks.
+  - `numpy` is used for numerical computations.
+
+```
+face_classifier = cv2.CascadeClassifier(r'haarcascade_frontalface_default.xml')
+classifier =load_model(r'model.h5')
+```
+- `CascadeClassifier` is a pre-trained classifier for detecting faces in images. It uses the Haar Cascade algorithm.
+- `load_model` is used to load a pre-trained Keras model saved in the HDF5 format.
+
+```
+emotion_labels = ['Angry','Disgust','Fear','Happy','Neutral', 'Sad', 'Surprise']
+```
+- This list contains labels corresponding to different emotions recognized by the model.
+
+```
+cap = cv2.VideoCapture(0)
+```
+- This line initializes the video capture object to capture video from the default camera (index 0).
+
+```
+while True:
+    _, frame = cap.read()
+```
+- This loop captures frames from the video feed continuously.
+
+```
+labels = []
+gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+```
+- Converts the captured frame from BGR to grayscale.
+
+```
+faces = face_classifier.detectMultiScale(gray)
+```
+- Detects faces in the grayscale frame using the face cascade classifier.
+
+```
+for (x,y,w,h) in faces:
+    cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,255),2)
+```
+- Draws rectangles around the detected faces on the original frame.
+
+```
+roi_gray = gray[y:y+h,x:x+w]
+roi_gray = cv2.resize(roi_gray,(48,48),interpolation=cv2.INTER_AREA)
+```
+- Extracts the region of interest (ROI) for each detected face, resizes it to 48x48 pixels, which is the input size expected by the model.
+
+```
+if np.sum([roi_gray])!=0:
+    roi = roi_gray.astype('float')/255.0
+    roi = img_to_array(roi)
+    roi = np.expand_dims(roi,axis=0)
+
+    prediction = classifier.predict(roi)[0]
+    label=emotion_labels[prediction.argmax()]
+    label_position = (x,y)
+    cv2.putText(frame,label,label_position,cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
+```
+- Checks if the ROI contains any face pixels. If it does, preprocesses the ROI, predicts the emotion using the loaded model, and annotates the frame with the predicted emotion label.
+
+```
+else:
+    cv2.putText(frame,'No Faces',(30,80),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
+```
+- If no face is detected in the ROI, it annotates the frame with 'No Faces' text.
+
+```
+cv2.imshow('Emotion Detector',frame)
+if cv2.waitKey(1) & 0xFF == ord('q'):
+    break
+```
+- Displays the annotated frame in a window titled 'Emotion Detector'. If the 'q' key is pressed, the loop breaks, terminating the program.
+
+```
+cap.release()
+cv2.destroyAllWindows()
+```
+- Releases the video capture object and closes all OpenCV windows.
